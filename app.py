@@ -1,10 +1,19 @@
 from flask import Flask, render_template_string, request
 import pickle
 import pandas as pd
+import os
 
 app = Flask(__name__)
 
-model = pickle.load(open("adaboost(1).pkl", "rb"))
+# Load Model
+try:
+    with open("adaboost(1).pkl", "rb") as f:
+        model = pickle.load(f)
+    model_loaded = True
+    model_error = None
+except Exception as e:
+    model_loaded = False
+    model_error = str(e)
 
 HTML = """
 <!DOCTYPE html>
@@ -25,9 +34,10 @@ HTML = """
             display:flex;
             justify-content:center;
             align-items:center;
+            padding:20px;
             background:linear-gradient(-45deg,#667eea,#764ba2,#6a11cb,#2575fc);
             background-size:400% 400%;
-            animation:gradientBG 12s ease infinite;
+            animation:gradientBG 10s ease infinite;
         }
 
         @keyframes gradientBG{
@@ -37,24 +47,24 @@ HTML = """
         }
 
         .container{
-            width:90%;
+            width:100%;
             max-width:900px;
             background:rgba(255,255,255,0.15);
             backdrop-filter:blur(12px);
             border-radius:20px;
             padding:30px;
             box-shadow:0 8px 32px rgba(0,0,0,0.3);
-            animation:slideUp 1s ease;
+            animation:fadeIn 1s ease;
         }
 
-        @keyframes slideUp{
+        @keyframes fadeIn{
             from{
-                transform:translateY(50px);
                 opacity:0;
+                transform:translateY(30px);
             }
             to{
-                transform:translateY(0);
                 opacity:1;
+                transform:translateY(0);
             }
         }
 
@@ -70,17 +80,14 @@ HTML = """
             gap:15px;
         }
 
-        .input-box{
-            display:flex;
-            flex-direction:column;
-        }
-
         label{
             color:white;
+            display:block;
             margin-bottom:5px;
         }
 
         input{
+            width:100%;
             padding:12px;
             border:none;
             border-radius:10px;
@@ -102,21 +109,18 @@ HTML = """
         }
 
         button:hover{
-            transform:scale(1.05);
+            transform:scale(1.03);
         }
 
         .result{
-            margin-top:25px;
-            text-align:center;
+            margin-top:20px;
+            padding:15px;
+            border-radius:10px;
+            background:rgba(255,255,255,0.2);
             color:white;
-            font-size:24px;
+            text-align:center;
+            font-size:20px;
             font-weight:bold;
-            animation:fadeIn 1s ease;
-        }
-
-        @keyframes fadeIn{
-            from{opacity:0;}
-            to{opacity:1;}
         }
     </style>
 </head>
@@ -131,47 +135,47 @@ HTML = """
 
 <div class="grid">
 
-<div class="input-box">
+<div>
 <label>Hours Coding</label>
 <input type="number" step="any" name="Hours_Coding" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>AI Usage Hours</label>
 <input type="number" step="any" name="AI_Usage_Hours" required>
 </div>
 
-<div class="input-box">
-<label>Lines Of Code</label>
+<div>
+<label>Lines of Code</label>
 <input type="number" step="any" name="Lines_of_Code" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>Commits</label>
 <input type="number" step="any" name="Commits" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>Bugs Reported</label>
 <input type="number" step="any" name="Bugs_Reported" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>Sleep Hours</label>
 <input type="number" step="any" name="Sleep_Hours" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>Distractions</label>
 <input type="number" step="any" name="Distractions" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>Cognitive Load</label>
 <input type="number" step="any" name="Cognitive_Load" required>
 </div>
 
-<div class="input-box">
+<div>
 <label>Stress Level</label>
 <input type="number" step="any" name="Stress_Level" required>
 </div>
@@ -184,7 +188,7 @@ HTML = """
 
 {% if prediction %}
 <div class="result">
-Prediction : {{ prediction }}
+    {{ prediction }}
 </div>
 {% endif %}
 
@@ -194,47 +198,39 @@ Prediction : {{ prediction }}
 </html>
 """
 
-@app.route("/", methods=["GET","POST"])
+@app.route("/", methods=["GET", "POST"])
 def home():
 
     prediction = None
 
     if request.method == "POST":
 
-        data = [[
-            float(request.form["Hours_Coding"]),
-            float(request.form["AI_Usage_Hours"]),
-            float(request.form["Lines_of_Code"]),
-            float(request.form["Commits"]),
-            float(request.form["Bugs_Reported"]),
-            float(request.form["Sleep_Hours"]),
-            float(request.form["Distractions"]),
-            float(request.form["Cognitive_Load"]),
-            float(request.form["Stress_Level"])
-        ]]
+        try:
 
-        columns = [
-            'Hours_Coding',
-            'AI_Usage_Hours',
-            'Lines_of_Code',
-            'Commits',
-            'Bugs_Reported',
-            'Sleep_Hours',
-            'Distractions',
-            'Cognitive_Load',
-            'Stress_Level'
-        ]
+            if not model_loaded:
+                raise Exception(model_error)
 
-        df = pd.DataFrame(data, columns=columns)
+            data = pd.DataFrame([{
+                "Hours_Coding": float(request.form["Hours_Coding"]),
+                "AI_Usage_Hours": float(request.form["AI_Usage_Hours"]),
+                "Lines_of_Code": float(request.form["Lines_of_Code"]),
+                "Commits": float(request.form["Commits"]),
+                "Bugs_Reported": float(request.form["Bugs_Reported"]),
+                "Sleep_Hours": float(request.form["Sleep_Hours"]),
+                "Distractions": float(request.form["Distractions"]),
+                "Cognitive_Load": float(request.form["Cognitive_Load"]),
+                "Stress_Level": float(request.form["Stress_Level"])
+            }])
 
-        pred = model.predict(df)[0]
+            pred = model.predict(data)[0]
 
-        if pred == 1:
-            prediction = "🔥 High Productivity"
-        else:
-            prediction = "⚠️ Low Productivity"
+            prediction = f"Prediction Result: {pred}"
+
+        except Exception as e:
+            prediction = f"Error: {str(e)}"
 
     return render_template_string(HTML, prediction=prediction)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
