@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Load Model
 try:
-    with open("adaboost(1).pkl", "rb") as f:
+    with open("adaboost.pkl", "rb") as f:
         model = pickle.load(f)
     model_loaded = True
     model_error = None
